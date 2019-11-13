@@ -31,7 +31,7 @@ public:
 	vec3 crossRayPlane(Ray& ray, Box& box);
 	RayHit getIntersectionSphere(Ray& r, Sphere* s);
 	RayHit getIntersectionBox(Ray& r, Box* s);
-	RayHit findNearestObject(Ray& ray);
+	RayHit findNearestObject(Ray& ray, IMaterial* objToIgnore = nullptr);
 	void WriteFrameBuffer();
 	vec3 RayTracing(Ray& ray, int depth);
 	void setViewPort(int w, int h);

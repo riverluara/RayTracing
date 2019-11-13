@@ -206,15 +206,15 @@ void LoadConfigFile(const char* pFilePath)
 						filestr >> rot.x;
 						filestr >> rot.y;
 						filestr >> rot.z;
+
+
 						mat4 m(1.0f);
 
-
 						// rotation order is zyx
-						m = rotate(m, rot.z, vec3(0, 0, 1));
-						m = rotate(m, rot.y, vec3(0, 1, 0));
-						m = rotate(m, rot.x, vec3(1, 0, 0));
+						m = rotate(m, radians(rot.z), vec3(0, 0, 1));
+						m = rotate(m, radians(rot.y), vec3(0, 1, 0));
+						m = rotate(m, radians(rot.x), vec3(1, 0, 0));
 
-						cout << to_string(rot) << endl;
 
 						g_boxes[i].rotMat = m;
 						g_boxes[i].invRotMat = inverse(m);

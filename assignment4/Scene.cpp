@@ -22,45 +22,26 @@ void Scene::initScene(Box* b, Sphere* s, Camera c, Light l)
 	buffer.resize(width * height);
 	isSceneChanged = true;
 
-	light.pos = vec3(camera.mvMat * vec4(light.pos, 1));
-
-	for (int i = 0; i < 2; ++i)
-		sphere[i].pos = vec3(camera.mvMat * vec4(sphere[i].pos, 1));
-
 
 	for (int i = 0; i < 2; ++i)
 	{
 		mat4 S = scale(0.5f * (box[i].maxPos - box[i].minPos));
 		mat4 T = translate(0.5f * (box[i].maxPos + box[i].minPos));
 
-		box[i].projMat = camera.mvMat * T * box[i].rotMat * S;
+		box[i].projMat = T * box[i].rotMat * S;
 		box[i].invProjMat = inverse(box[i].projMat);
 	}
-
-	//Ray r;
-
-	//r.beginPoint = vec3(0, 0, 0);
-	//r.direction = vec3(0, 0, -1);
-
-	//Box bx;
-	//bx.minPos = vec3(-1, -1, -1);
-	//bx.maxPos = vec3(1, 1, 1);
-	//bx.rotMat = scale(vec3(1, 1, 1));
-	//bx.projMat = camera.mvMat * bx.rotMat;
-	//bx.invProjMat = inverse(bx.projMat);
-
-	//cout << getIntersectionBox(r, &bx).t << endl;
 }
 
 
 
 RayHit Scene::getIntersectionSphere(Ray& ray, Sphere* sphere)
 {
-	vec3 v(sphere->pos);
+	vec3 O(sphere->pos);
 
 	float a = dot(ray.direction, ray.direction);
-	float b = 2 * dot(ray.direction, (ray.beginPoint - v));
-	float c = dot(v, v) - sphere->radius * sphere->radius + dot(ray.beginPoint, ray.beginPoint);
+	float b = 2 * dot(ray.direction, (ray.beginPoint - O));
+	float c = dot(O, O) - sphere->radius * sphere->radius + dot(ray.beginPoint, ray.beginPoint);
 	float delta = b * b - 4 * a * c;
 	
 	if (delta > 0)
@@ -104,7 +85,7 @@ RayHit Scene::getIntersectionBox(Ray& ray, Box* box)
 	{
 		vec3 intersection = P + t * L;
 
-		if (box->Contains(intersection) && (minT < 0 || t < minT))
+		if (intersection.y >= -1 && intersection.y <= 1 && intersection.z >= -1 && intersection.z <= 1 && (minT < 0 || t < minT))
 		{
 			minT = t;
 			n = -x;
@@ -113,11 +94,11 @@ RayHit Scene::getIntersectionBox(Ray& ray, Box* box)
 	}
 
 	t = dot(minP - P, -y) / dot(L, -y);
-	if (t > 0 && (minT < 0 || t < minT))
+	if (t > 0)
 	{
 		vec3 intersection = P + t * L;
 
-		if (box->Contains(intersection) && (minT < 0 || t < minT))
+		if (intersection.x >= -1 && intersection.x <= 1 && intersection.z >= -1 && intersection.z <= 1 && (minT < 0 || t < minT))
 		{
 			minT = t;
 			n = -y;
@@ -126,11 +107,11 @@ RayHit Scene::getIntersectionBox(Ray& ray, Box* box)
 	}
 
 	t = dot(minP - P, -z) / dot(L, -z);
-	if (t > 0 && (minT < 0 || t < minT))
+	if (t > 0)
 	{
 		vec3 intersection = P + t * L;
 
-		if (box->Contains(intersection) && (minT < 0 || t < minT))
+		if (intersection.x >= -1 && intersection.x <= 1 && intersection.y >= -1 && intersection.y <= 1 && (minT < 0 || t < minT))
 		{
 			minT = t;
 			n = -z;
@@ -143,7 +124,7 @@ RayHit Scene::getIntersectionBox(Ray& ray, Box* box)
 	{
 		vec3 intersection = P + t * L;
 
-		if (box->Contains(intersection) && (minT < 0 || t < minT))
+		if (intersection.y >= -1 && intersection.y <= 1 && intersection.z >= -1 && intersection.z <= 1 && (minT < 0 || t < minT))
 		{
 			minT = t;
 			n = x;
@@ -152,11 +133,11 @@ RayHit Scene::getIntersectionBox(Ray& ray, Box* box)
 	}
 
 	t = dot(maxP - P, y) / dot(L, y);
-	if (t > 0 && (minT < 0 || t < minT))
+	if (t > 0)
 	{
 		vec3 intersection = P + t * L;
 
-		if (box->Contains(intersection) && (minT < 0 || t < minT))
+		if (intersection.x >= -1 && intersection.x <= 1 && intersection.z >= -1 && intersection.z <= 1 && (minT < 0 || t < minT))
 		{
 			minT = t;
 			n = y;
@@ -165,11 +146,11 @@ RayHit Scene::getIntersectionBox(Ray& ray, Box* box)
 	}
 
 	t = dot(maxP - P, z) / dot(L, z);
-	if (t > 0 && (minT < 0 || t < minT))
+	if (t > 0)
 	{
 		vec3 intersection = P + t * L;
 
-		if (box->Contains(intersection) && (minT < 0 || t < minT))
+		if (intersection.x >= -1 && intersection.x <= 1 && intersection.y >= -1 && intersection.y <= 1 && (minT < 0 || t < minT))
 		{
 			minT = t;
 			n = z;
@@ -194,26 +175,36 @@ RayHit Scene::getIntersectionBox(Ray& ray, Box* box)
 	return RayHit();
 }
 
-RayHit Scene::findNearestObject(Ray & ray)
+RayHit Scene::findNearestObject(Ray& ray, IMaterial* objToIgnore)
 {
 	RayHit hit;
 
 	//1. find sphere
 	for (int i = 0; i < 2; i++)
 	{
-		RayHit temp = getIntersectionSphere(ray, sphere + i);
+		Sphere* obj = sphere + i;
 
-		if (temp.t < hit.t)
-			hit = temp;
+		if (obj != objToIgnore)
+		{
+			RayHit temp = getIntersectionSphere(ray, obj);
+
+			if (temp.t < hit.t)
+				hit = temp;
+		}
 	}
 
 	//2. find box
 	for (int i = 0; i < 2; i++)
 	{
-		RayHit temp = getIntersectionBox(ray, box + i);
+		Box* obj = box + i;
 
-		if (temp.t < hit.t)
-			hit = temp;
+		if (obj != objToIgnore)
+		{
+			RayHit temp = getIntersectionBox(ray, obj);
+
+			if (temp.t < hit.t)
+				hit = temp;
+		}
 	}
 
 
@@ -222,49 +213,60 @@ RayHit Scene::findNearestObject(Ray & ray)
 
 void Scene::WriteFrameBuffer()
 {
-	int i, j, point = 0;
-	vec3 Q = vec3(0,0,0);
-
-	vec3 E;
 	//in camera space
 	float h = 2 * camera.near_plane * tan(radians(camera.fovy / 2));
 	float w = h * width / height;
+
+
+	mat4 invCamMat = inverse(camera.mvMat);
+
+
 	Ray ray;
-	ray.beginPoint = Q;
-	for (i = 0; i < height; i++)
+	ray.beginPoint = vec3(invCamMat * vec4(0, 0, 0, 1));
+	
+	int point = 0;
+	for (int i = 0; i < height; i++)
 	{
-		for (j = 0; j < width; j++)
+		for (int j = 0; j < width; j++)
 		{
-			vec3 s = vec3((j + 0.5) / width * w - w/2, (i + 0.5) / height * h - h/2, -camera.near_plane);
-		
-			E = s - Q;
-			E = normalize(E);
-			ray.direction = E;
-			vec3 color = RayTracing(ray, 0);
-			buffer[point] = color;
-			point++;
+			vec4 p = vec4((j + 0.5) / width * w - w/2, (i + 0.5) / height * h - h/2, -camera.near_plane, 1);
+
+			ray.direction = normalize(vec3(invCamMat * p) - ray.beginPoint);
+			
+
+			buffer[point++] = RayTracing(ray, 0);
 		}
 	}
 }
 
-vec3 Scene::RayTracing(Ray & ray, int depth)
+vec3 Scene::RayTracing(Ray& ray, int depth)
 {
 	RayHit hit = findNearestObject(ray);
 	
+
 	if (hit.obj)
 	{
 		vec3 s = normalize(light.pos - hit.point);
+
+
+		Ray shadowRay;
+		shadowRay.beginPoint = hit.point;
+		shadowRay.direction = s;
+
+		RayHit shadowHit = findNearestObject(shadowRay, hit.obj);
+
 
 		float s_dot_n = dot(s, hit.normal);
 		float r_dot_v = dot(normalize(reflect(s, hit.normal)), -ray.direction);
 
 		float Ia = hit.obj->ambient;
-		float Id = light.intensity * hit.obj->diffuse * s_dot_n;
-		float Is = s_dot_n <= 0 ? 0 : light.intensity * hit.obj->phong * pow(r_dot_v, 50);
+		float Id = light.intensity * hit.obj->diffuse * (shadowHit.obj ? 0 : s_dot_n);
+		float Is = s_dot_n <= 0 ? 0 : light.intensity * hit.obj->phong * (shadowHit.obj ? 0 : pow(r_dot_v, 50));
 
 
 		return (Ia + Id) * light.color * hit.obj->color + Is * light.color;
 	}
+
 
 	return vec3(0, 0, 0);
 }
